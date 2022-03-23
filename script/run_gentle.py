@@ -54,9 +54,9 @@ def run_gentle(video_path, vid, result_path):
         #                                disfluencies=disfluencies)
         # result = aligner.transcribe(wav_file, logging=logging)
 
-        # run gentle
+        # run gentle with docker running on port 8765
         command = "curl -F \"audio=@"+ wav_file + "\" -F \"transcript=@" \
-                  + transcript_path + "\" \"http://localhost:8765/transcriptions?async=false\""
+                  + transcript_path + "\" \"http://localhost:8765/transcriptions?async=false\" > " + result_path
         print(command)
         subprocess.call(command, shell=True)
 

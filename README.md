@@ -11,6 +11,18 @@ If you have any questions or comments, please feel free to contact me by email (
 ## Environment
 
 The scripts are tested on Ubuntu 16.04 LTS and Python 3.5.2.  
+
+The updated scripts are tested on Ubuntu 18.04 and Python 3.6.
+
+The **OpenPose** fails to compile so a Windows machine is used (which is easier to setup).
+
+The **Gentle** fails to compile so a Docker image is used (which is easier to setup).
+* After install docker image following the [gentle](https://github.com/lowerquality/gentle) instructions, run this following command 
+to make sure the Gentle service is listening to the right port:
+    ```shell script
+    docker run -p 8765:8765 lowerquality/gentle
+    ```
+
 #### Dependencies 
 * [OpenPose](https://github.com/CMU-Perceptual-Computing-Lab/openpose) (v1.4) for pose estimation
 * [PySceneDetect](https://pyscenedetect.readthedocs.io/en/latest/) (v0.5) for video scene segmentation
@@ -43,13 +55,13 @@ The scripts are tested on Ubuntu 16.04 LTS and Python 3.5.2.
 2. Execute `download_video.py`
    * Download youtube videos, metadata, and subtitles (./videos/*.mp4, *.json, *.vtt).
 
-3. Execute `run_openpose.py`
+3. Execute `run_openpose.py` (run on Windows)
    * Run [OpenPose](https://github.com/CMU-Perceptual-Computing-Lab/openpose) to extract body, hand, and face skeletons for all vidoes (./skeleton/*.pickle). 
 
 4. Execute `run_scenedetect.py`
    * Run [PySceneDetect](https://pyscenedetect.readthedocs.io/en/latest/) to divide videos into scene clips (./clip/*.csv).
   
-5. Execute `run_gentle.py`
+5. Execute `run_gentle.py` (run on Docker)
    * Run [Gentle](https://github.com/lowerquality/gentle) for word-level alignments (./videos/*_align_results.json).
    * You should skip this step if you use auto-generated subtitles. This step is necessary for the TED Talks channel. 
 
