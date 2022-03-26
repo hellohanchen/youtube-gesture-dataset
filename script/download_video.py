@@ -74,22 +74,28 @@ def fetch_video_ids(channel_id, search_start_time):  # load video ids in the cha
 def video_filter(info):
     passed = True
 
-    exist_proper_format = False
-    format_data = info.get('formats')
-    for i in format_data:
-        if i.get('ext') == 'mp4' and i.get('height') >= 720 and i.get('acodec') != 'none':
-            exist_proper_format = True
-    if not exist_proper_format:
+    try:
+        exist_proper_format = False
+        format_data = info.get('formats')
+        for i in format_data:
+            if i.get('ext') == 'mp4' and i.get('height') >= 720 and i.get('acodec') != 'none':
+                exist_proper_format = True
+        if not exist_proper_format:
+            print("No proper format")
+            passed = False
+
+        if passed:
+            duration_hours = info.get('duration') / 3600.0
+            if duration_hours > 1.0:
+                print("Video too long")
+                passed = False
+
+        if passed:
+            if len(info.get('automatic_captions', [])) == 0 and len(info.get('subtitles')) == 0:
+                print("No subtitle")
+                passed = False
+    except Exception as err:
         passed = False
-
-    if passed:
-        duration_hours = info.get('duration') / 3600.0
-        if duration_hours > 1.0:
-            passed = False
-
-    if passed:
-        if len(info.get('automatic_captions')) == 0 and len(info.get('subtitles')) == 0:
-            passed = False
 
     return passed
 
@@ -106,10 +112,10 @@ def download(vid_list):
                 }  # download options
     language = my_config.LANG
 
-    download_count = 0
-    skip_count = 0
     sub_count = 0
     log = open("download_log.txt", 'w', encoding="utf-8")
+    downloaded = []
+    skipped = []
 
     if len(RESUME_VIDEO_ID) < 10:
         skip_index = 0
@@ -161,25 +167,26 @@ def download(vid_list):
                                     break
                             return url
 
-                        if info.get('subtitles') != {} and (info.get('subtitles')).get(language) != None:
+                        if 'subtitles' in info and (info.get('subtitles')).get(language) != None:
                             sub_url = get_subtitle_url(info.get('subtitles'), language, 'vtt')
                             download_subtitle(sub_url, vid, language)
                             sub_count += 1
-                        if info.get('automatic_captions') != {}:
+                        elif 'automatic_captions' in info:
                             auto_sub_url = get_subtitle_url(info.get('automatic_captions'), language, 'vtt')
                             download_subtitle(auto_sub_url, vid, language+'-auto')
 
                         log.write("{} - downloaded\n".format(str(vid)))
-                        download_count += 1
+                        downloaded.append(vid)
                         break
             else:
                 log.write("{} - skipped\n".format(str(info.get('id'))))
-                skip_count += 1
+                skipped.append(str(info.get('id')))
 
-        print("  downloaded: {}, skipped: {}".format(download_count, skip_count))
+        print("  downloaded: {}, skipped: {}".format(len(downloaded), len(skipped)))
 
     log.write("\nno of subtitles : {}\n".format(sub_count))
-    log.write("downloaded: {}, skipped : {}\n".format(download_count, skip_count))
+    log.write("downloaded: {}, skipped : {}\n".format(len(downloaded), len(skipped)))
+    print("skipped ids : " + ",".join(skipped))
     log.close()
 
 
