@@ -8,6 +8,9 @@
 
 import os
 import pickle
+import math
+import librosa
+import numpy as np
 
 from tqdm import tqdm_gui
 import unicodedata
@@ -15,9 +18,18 @@ import unicodedata
 from data_utils import *
 
 
+AUDIO_DIR = my_config.WORK_PATH + "/temp_wav/"
+DATASET = "all_" + my_config.DATASET
+
+
 def read_subtitle(vid):
     postfix_in_filename = '-en.vtt'
     file_list = glob.glob(my_config.SUBTITLE_PATH + '/*' + vid + postfix_in_filename)
+    if len(file_list) == 0:
+        print("No -en.vtt for " + vid + " try with -en-auto.vtt")
+        postfix_in_filename = '-en-auto.vtt'
+        file_list = glob.glob(my_config.SUBTITLE_PATH + '/*' + vid + postfix_in_filename)
+
     if len(file_list) > 1:
         print('more than one subtitle. check this.', file_list)
         assert False
@@ -51,6 +63,24 @@ def normalize_subtitle(vtt_subtitle):
     return vtt_subtitle
 
 
+def extract_audio_feature(y, sr, video_total_frames, video_start_frame, video_end_frame):
+    # roi
+    n = y.shape[0]
+    start_frame = math.floor(video_start_frame / video_total_frames * n)
+    end_frame = math.ceil(video_end_frame / video_total_frames * n)
+    y_roi = y[start_frame:end_frame]
+
+    # feature extraction
+    melspec = librosa.feature.melspectrogram(y=y_roi, sr=sr, n_fft=1024, hop_length=512, power=2)
+    log_melspec = librosa.power_to_db(melspec, ref=np.max)  # mels * time
+
+    # change type
+    log_melspec = log_melspec.astype('float16')
+    y_roi = y_roi.astype('float16')
+
+    return log_melspec, y_roi
+
+
 def make_ted_gesture_dataset():
     dataset_train = []
     dataset_val = []
@@ -69,6 +99,7 @@ def make_ted_gesture_dataset():
             break
 
         video_wrapper = read_video(my_config.VIDEO_PATH, vid)
+        video_total_frame = video_wrapper.total_frames
 
         subtitle_type = my_config.SUBTITLE_TYPE
         subtitle = SubtitleWrapper(vid, subtitle_type).get()
@@ -76,6 +107,9 @@ def make_ted_gesture_dataset():
         if subtitle is None:
             print('[WARNING] subtitle does not exist! skipping this video.')
             continue
+
+        # load audio
+        y, sr = librosa.load(AUDIO_DIR + vid + '_resampled.wav', mono=True, sr=16000, res_type='kaiser_fast')
 
         dataset_train.append({'vid': vid, 'clips': []})
         dataset_val.append({'vid': vid, 'clips': []})
@@ -85,6 +119,12 @@ def make_ted_gesture_dataset():
         valid_clip_count = 0
         for ia, clip in enumerate(clip_data):
             start_frame_no, end_frame_no, clip_pose_all = clip['clip_info'][0], clip['clip_info'][1], clip['frames']
+            start_time = video_wrapper.frame2second(start_frame_no)
+            end_time = video_wrapper.frame2second(end_frame_no)
+
+            # audio
+            clip_audio_feature, clip_audio_raw = extract_audio_feature(y, sr, video_total_frame, start_frame_no, end_frame_no)
+
             clip_word_list = []
 
             # skip FALSE clips
@@ -108,19 +148,21 @@ def make_ted_gesture_dataset():
                 if ib < 0:
                     continue
 
-                word_s = video_wrapper.second2frame(subtitle[ib]['start'])
-                word_e = video_wrapper.second2frame(subtitle[ib]['end'])
+                word_start_time = video_wrapper.second2frame(subtitle[ib]['start'])
+                word_end_time = video_wrapper.second2frame(subtitle[ib]['end'])
+                word_start_frame = video_wrapper.second2frame(word_start_time)
+                word_end_frame = video_wrapper.second2frame(word_end_time)
                 word = subtitle[ib]['word']
 
-                if word_s >= end_frame_no:
+                if word_start_frame >= end_frame_no:
                     word_index = ib
                     break
 
-                if word_e <= start_frame_no:
+                if word_end_frame <= start_frame_no:
                     continue
 
                 word = normalize_string(word)
-                clip_word_list.append([word, word_s, word_e])
+                clip_word_list.append([word, word_start_time, word_end_time, word_start_frame, word_end_frame])
 
             if clip_word_list:
                 clip_skeleton = []
@@ -138,7 +180,10 @@ def make_ted_gesture_dataset():
                     n_saved_clips[dataset_idx] += 1
                     dataset[-1]['clips'].append({'words': clip_word_list,
                                                  'skeletons': clip_skeleton,
+                                                 'skeletons_3d': clip_skeleton,
+                                                 'start_time': start_time, 'end_time': end_time,
                                                  'start_frame_no': start_frame_no, 'end_frame_no': end_frame_no,
+                                                 'audio_feature': clip_audio_feature, 'audio_raw': clip_audio_raw,
                                                  'vid': vid
                                                  })
                     print('{} ({}, {})'.format(vid, start_frame_no, end_frame_no))
@@ -150,13 +195,13 @@ def make_ted_gesture_dataset():
     #     break
 
     print('writing to pickle...')
-    with open('ted_gesture_dataset_train.pickle', 'wb') as f:
+    with open(DATASET + '_train.pickle', 'wb') as f:
         pickle.dump(dataset_train, f)
-    with open('ted_gesture_dataset_train_small.pickle', 'wb') as f:  # for debugging
+    with open(DATASET + '_train_small.pickle', 'wb') as f:  # for debugging
         pickle.dump(dataset_train[0:10], f)
-    with open('ted_gesture_dataset_val.pickle', 'wb') as f:
+    with open(DATASET + '_val.pickle', 'wb') as f:
         pickle.dump(dataset_val, f)
-    with open('ted_gesture_dataset_test.pickle', 'wb') as f:
+    with open(DATASET + '_test.pickle', 'wb') as f:
         pickle.dump(dataset_test, f)
 
     print('no. of saved clips: train {}, val {}, test {}'.format(n_saved_clips[0], n_saved_clips[1], n_saved_clips[2]))

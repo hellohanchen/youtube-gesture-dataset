@@ -49,16 +49,16 @@ def run_gentle(video_path, vid, result_path):
     # align
     resampled_file = OUTPUT_WAV_PATH + '/' + vid + '_resampled.wav'
     resample(video_path, resampled_file)
-    with resampled(video_path) as wav_file:
-        # aligner = gentle.ForcedAligner(resources, transcript, nthreads=nthreads, disfluency=False, conservative=False,
-        #                                disfluencies=disfluencies)
-        # result = aligner.transcribe(wav_file, logging=logging)
-
-        # run gentle with docker running on port 8765
-        command = "curl -F \"audio=@"+ wav_file + "\" -F \"transcript=@" \
-                  + transcript_path + "\" \"http://localhost:8765/transcriptions?async=false\" > " + result_path
-        print(command)
-        subprocess.call(command, shell=True)
+    # with resampled(video_path) as wav_file:
+    #     # aligner = gentle.ForcedAligner(resources, transcript, nthreads=nthreads, disfluency=False, conservative=False,
+    #     #                                disfluencies=disfluencies)
+    #     # result = aligner.transcribe(wav_file, logging=logging)
+    #
+    #     # run gentle with docker running on port 8765
+    #     command = "curl -F \"audio=@"+ wav_file + "\" -F \"transcript=@" \
+    #               + transcript_path + "\" \"http://localhost:8765/transcriptions?async=false\" > " + result_path
+    #     print(command)
+    #     subprocess.call(command, shell=True)
 
     # write results
     # with open(result_path, 'w', encoding="utf-8") as fh:
