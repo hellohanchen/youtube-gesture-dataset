@@ -19,6 +19,7 @@ from data_utils import *
 
 
 AUDIO_DIR = my_config.WORK_PATH + "/temp_wav/"
+POSE_DIR = my_config.WORK_PATH + "/pose_3d/"
 DATASET = "all_" + my_config.DATASET
 
 
@@ -111,6 +112,9 @@ def make_ted_gesture_dataset():
         # load audio
         y, sr = librosa.load(AUDIO_DIR + vid + '_resampled.wav', mono=True, sr=16000, res_type='kaiser_fast')
 
+        # load 3d pose
+        pose_data = np.load(POSE_DIR + vid + '_pose.npy')
+
         dataset_train.append({'vid': vid, 'clips': []})
         dataset_val.append({'vid': vid, 'clips': []})
         dataset_test.append({'vid': vid, 'clips': []})
@@ -180,7 +184,7 @@ def make_ted_gesture_dataset():
                     n_saved_clips[dataset_idx] += 1
                     dataset[-1]['clips'].append({'words': clip_word_list,
                                                  'skeletons': clip_skeleton,
-                                                 'skeletons_3d': clip_skeleton,
+                                                 'skeletons_3d': pose_data[start_frame_no:end_frame_no,-10:],
                                                  'start_time': start_time, 'end_time': end_time,
                                                  'start_frame_no': start_frame_no, 'end_frame_no': end_frame_no,
                                                  'audio_feature': clip_audio_feature, 'audio_raw': clip_audio_raw,

@@ -42,6 +42,10 @@ def run_gentle(video_path, vid, result_path):
         transcript += (vtt_subtitle[i].text + ' ')
     transcript = re.sub('\n', ' ', transcript)  # remove newline characters
 
+    if transcript == "":
+        print("ERROR: Empty transcript, skip [" + vid + "]")
+        return
+
     transcript_path = OUTPUT_TRANSCRIPT_PATH + '/' + vid + '_transcript.txt'
     with open(transcript_path, 'w') as tfile:
         tfile.write(transcript)
@@ -49,16 +53,21 @@ def run_gentle(video_path, vid, result_path):
     # align
     resampled_file = OUTPUT_WAV_PATH + '/' + vid + '_resampled.wav'
     resample(video_path, resampled_file)
+
+    if os.path.exists(result_path):
+        print("Aligned result exists, skip [" + vid + "]")
+        return
+
     # with resampled(video_path) as wav_file:
-    #     # aligner = gentle.ForcedAligner(resources, transcript, nthreads=nthreads, disfluency=False, conservative=False,
-    #     #                                disfluencies=disfluencies)
-    #     # result = aligner.transcribe(wav_file, logging=logging)
-    #
-    #     # run gentle with docker running on port 8765
-    #     command = "curl -F \"audio=@"+ wav_file + "\" -F \"transcript=@" \
-    #               + transcript_path + "\" \"http://localhost:8765/transcriptions?async=false\" > " + result_path
-    #     print(command)
-    #     subprocess.call(command, shell=True)
+        # aligner = gentle.ForcedAligner(resources, transcript, nthreads=nthreads, disfluency=False, conservative=False,
+        #                                disfluencies=disfluencies)
+        # result = aligner.transcribe(wav_file, logging=logging)
+
+        # run gentle with docker running on port 8765
+    command = "curl -F \"audio=@"+ resampled_file + "\" -F \"transcript=@" \
+              + transcript_path + "\" \"http://localhost:8765/transcriptions?async=false\" > " + result_path
+    print(command)
+    subprocess.call(command, shell=True)
 
     # write results
     # with open(result_path, 'w', encoding="utf-8") as fh:

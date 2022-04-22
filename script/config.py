@@ -27,7 +27,7 @@ class TEDConfig(Config):
     LANG = 'en'
     SUBTITLE_TYPE = 'gentle'
     FILTER_OPTION = {"threshold": 100}
-    DATASET = "age_ted_dataset"
+    DATASET = "age_ted_dataset_127"
 
 
 class LaughConfig(Config):
