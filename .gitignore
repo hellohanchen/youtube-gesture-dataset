@@ -1,3 +1,4 @@
 .idea/
 work/
+script/__pycache__/
 *.pickle
